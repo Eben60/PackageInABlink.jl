@@ -16,40 +16,78 @@ tmpl_section_end() =
 tmpl_beg(pgin_name, purpose, show=true) =
 """
 <div class="plugin_form_div" id="plugin_form_div_$(pgin_name)">
-<form class="plugin_form" name="$(pgin_name)_form" id="$(pgin_name)_form" action="javascript:void(0)"> 
-    <input id="Use_$(pgin_name)" value="Use_$(pgin_name)" $(checked(show)) onchange="oncng(this)" type="checkbox"> 
+<form class="plugin_form" name="$(pgin_name)_form" id="$(pgin_name)_form" action="javascript:void(0)">
+    <input id="Use_$(pgin_name)" value="Use_$(pgin_name)" $(checked(show)) onchange="oncng(this)" type="checkbox" class="TogglePlugin">
     <label for="Use_$(pgin_name)">$(pgin_name) plugin </label>
     <div class="Plugin_Purpose">$(purpose).</div>
-    <div class="Plugin_Inputs" id="$(pgin_name)_inputs" style = $(disp_style(show)) >
+    <div class="Plugin_Inputs" id="$(pgin_name)_inputs" style=$(disp_style(show)) >
 """
 
-tmpl_inp(pgin_name, arg, arg_val, arg_mean, color_no) =
-"""
+function tmpl_inp(pgin, arg, arg_meaning, color_no) 
+    pgin_name = pgin.name
+    arg_type = arg.type
+    arg_name = arg.name
+    return """
     <div class="pgin_inp_margins pgin_inp_col$(color_no)">
-    $(tmpl_input_field(pgin_name, arg, arg_val))
-    <span class="plugin_arg_meaning" id="argmeaning_$(pgin_name)_$(arg)">$(arg_mean)</span><br>
+    $(tmpl_input_field(pgin, arg, arg_type))
+    <span class="plugin_arg_meaning" id="argmeaning_$(pgin_name)_$(arg_name)">$(arg_meaning)</span><br>
     </div>
 """
+end
 
-tmpl_input_field(pgin_name, arg, arg_val) =
+function tmpl_path_input_field(pgin, arg, folderdialog=false)
+    button_class = folderdialog ? "FolderDialogButton" : "FileDialogButton"
+    pgin_name = pgin.name
+    arg_name = arg.name
+    arg_val = esc_qm(arg.default_val)
+    return """
+<input size="65" id="$(pgin_name)_$(arg_name)" name="$(arg_name)" value="$(arg_val)" onchange="oncng(this)" type="text">
+<button id="$(pgin_name)_$(arg_name)_button" onclick="oncng(this)" type="button" class="$button_class">Select</button><br>
 """
-<input size="70" id="$(pgin_name)_$(arg)" name="$(arg)" value="$(arg_val)" onchange="oncng(this)" type="text"><br>
-"""
+end
 
-tmpl_input_field(pgin_name, arg, arg_val::Bool) =
+function tmpl_input_field(pgin, arg)
+    pgin_name = pgin.name
+    arg_name = arg.name
+    arg_val = esc_qm(arg.default_val)
+    return """
+<input size="70" id="$(pgin_name)_$(arg_name)" name="$(arg_name)" value="$(arg_val)" onchange="oncng(this)" type="text"><br>
 """
-<input id="$(pgin_name)_$(arg)" name="$(arg)" $(checked(arg_val)) onchange="oncng(this)" type="checkbox">
+end
+
+tmpl_input_field(pgin, arg, ::Type{T}) where T <: AbstractString = tmpl_input_field(pgin, arg)
+
+function tmpl_input_field(pgin, arg, arg_type) 
+    arg.default_val isa AbstractArray && return tmpl_input_arrfield(pgin, arg)
+    arg_type == :file && return tmpl_path_input_field(pgin, arg, false)
+    arg_type == :dir && return tmpl_path_input_field(pgin, arg, true)
+    return tmpl_input_field(pgin, arg)
+end
+
+function tmpl_input_field(pgin, arg,  ::Type{Bool}) 
+    pgin_name = pgin.name
+    arg_name = arg.name
+    arg_val = esc_qm(arg.default_val)
+    return """
+<input id="$(pgin_name)_$(arg_name)" name="$(arg_name)" $(checked(arg_val)) onchange="oncng(this)" type="checkbox">
 """
+end
 
-vec2string(x::Vector) = isempty(x) ? "" : string.(x)
+vec2string(x::Vector) = isempty(x) ? "" : join(string.(x), "\n") |> esc_qm
 
-tmpl_input_field(pgin_name, arg, arg_val::Vector) =
+tmpl_input_field(pgin, arg, ::Type{T}) where T <: AbstractArray = tmpl_input_arrfield(pgin, arg)
+
+function tmpl_input_arrfield(pgin, arg)
+    pgin_name = pgin.name
+    arg_name = arg.name
+    arg_val = arg.default_val
+    id="$(pgin_name)_$(arg_name)"
+
+    return """
+<textarea id="$id" name="$(arg_name)" rows="3" cols="70" onchange="oncng(this)" >$(vec2string(arg_val)) </textarea> <br>
+<label for="$id" class="comment">A vector of strings is expected. Put each string onto a newline<br></label>
 """
-<textarea id="$(pgin_name)_$(arg)" name="$(arg)" rows="3" cols="70" onchange="oncng(this)" >$(vec2string(arg_val)) </textarea> <br>
-<label for="project_packages_input" class="comment">A vector of strings is expected. Put each string onto a newline</label>
-"""
-
-
+end
 
 tmpl_end() =
 """
@@ -60,43 +98,10 @@ tmpl_end() =
 
 disp_style(show::Bool) = show ? "\"display:block\"" : "\"display:none\""
 
-
-ArgTypes = Union{String, Bool, Nothing, Vector{<:AbstractString}}
-
-mutable struct PluginArg
-    const name::String
-    const isvector::Bool
-    value::ArgTypes
-    const meaning::String
-end
-
-PluginArg(x::Tuple{AbstractString, Bool, Any, AbstractString}) = PluginArg(String(x[1]), x[2], x[3], String(x[4]))
-
-struct PluginInfo
-    name::String
-    purpose::String
-    args::OrderedDict{String, PluginArg} 
-end
-
-# vec2od(args::Vector{PluginArg}) = OrderedDict(v.name => v for v in args)
-
-PluginInfo(name, purpose, args::Vector{PluginArg}) = PluginInfo(name, purpose, OrderedDict(v.name => v for v in args))
-
-
-PluginInfo(t::Tuple{AbstractString, AbstractString, Vector{Tuple{String, Bool, Any, String}}}) = 
-    PluginInfo(String(t[1]), String(t[2]), PluginArg.(t[3]))
-
-# PluginInfo(t::Tuple{Bool, String, String, Vector{Tuple{String, Bool, String, String}}}) = PluginInfo(t[1], t[2], t[3], PluginArg.(t[4]))
-
-# PluginInfo(t::Tuple{Bool, String, String, Vector{PluginArg}}) = PluginInfo(t[1], t[2], t[3], t[4])
-# PluginInfo(t::Tuple{Bool, String, String, Vector{PluginArg}}) = PluginInfo(t[1], t[2], t[3], t[4])
-
-PluginInfo(t::Tuple{String, String, Vector{Tuple{String, Bool, String, String}}}) = PluginInfo(t[1], t[2], PluginArg.(t[3]))
-
 ischecked(p::PluginInfo, selected_pgins=pgins_package) = selected_pgins[p.name]
 
-pgin_form(p::PluginInfo, selected_pgins=pgins_package) = tmpl_beg(p.name, p.purpose, ischecked(p, selected_pgins)) * 
-    join([tmpl_inp(p.name, a.name, esc_qm(a.value), esc_qm(a.meaning), (i%2+1)) for (i, a) in pairs(collect(values(p.args)))], " ") *
+pgin_form(p::PluginInfo, selected_pgins=pgins_package) = tmpl_beg(p.name, esc_qm(p.purpose), ischecked(p, selected_pgins)) * 
+    join([tmpl_inp(p, a, esc_qm(a.meaning), (i%2+1)) for (i, a) in pairs(collect(values(p.args)))], " ") *
     tmpl_end()
 
 html_plugins(ps) = tmpl_section_beg() * join([pgin_form(p) for (_, p) in ps], " \n") * tmpl_section_end()

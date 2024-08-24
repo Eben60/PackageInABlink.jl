@@ -20,6 +20,7 @@ function mainwin(fpath=winpath)
 end
 export mainwin
 
+# may not work if called during interaction
 getelemval(win, id) = js(win, Blink.JSString("""document.getElementById("$id").value"""))
 export getelemval
 
@@ -34,18 +35,6 @@ export disableinputelem
 
 
 export default_env_packages
-
-struct HtmlElem
-    id::Symbol
-    eltype::Symbol
-    inputtype::Symbol
-    parentformid::Symbol
-    value::Union{String, Float64}
-    checked::Union{Bool, Nothing}
-end
-
-HtmlElem(id, eltype, inputtype, parentformid, value::Real, checked) = HtmlElem(id, eltype, inputtype, parentformid, Float64(value), checked)
-export HtmlElem
 
 getforminputs(d, form) = filter(e -> (e.second.parentformid == Symbol(form)), d) 
 export getforminputs
@@ -69,14 +58,14 @@ function check_entries_def_installed(win, initvals)
     installed_pks = getpkgids(form1, pkgs)
     for item in keys(installed_pks)
         checkelem(win, item, true)
-        disableinputelem(win, item)
+        # disableinputelem(win, item)
     end
     return nothing
 end
 export check_entries_def_installed
 
 
-handleinput(x) = nothing # 
+# handleinput(x) = nothing # 
 handleinit_input() = nothing # println("init_input finished")
 handlefinalinput(win) = close(win)
 
@@ -86,16 +75,17 @@ function handlechangeevents(win, newvals, initvals, finalvals)
         if arg["reason"] in ["newinput", "init_input", "finalinput"]
             id = Symbol(arg["elid"])
             eltype = Symbol(arg["eltype"])
+            elclass = arg["elclass"] |> split .|> String
             inputtype = Symbol(arg["inputtype"])
             parentformid = Symbol(arg["parentformid"])
             checked = arg["elchecked"]
             v = arg["elval"]
-            el = HtmlElem(id, eltype, inputtype, parentformid, v, checked)
+            el = HtmlElem(id, eltype, elclass, inputtype, parentformid, v, checked)
             arg["reason"] == "newinput" && push!(newvals, id => el)
             arg["reason"] == "init_input" && push!(initvals, id => el)
             arg["reason"] == "finalinput" && push!(finalvals, id => el)
         end
-        arg["reason"] == "newinput" && handleinput(win, el)
+        arg["reason"] == "newinput" && handleinput(win, el, (; newvals, initvals))
         arg["reason"] == "init_inputfinished" && handleinit_input()
         arg["reason"] == "finalinputfinished" && handlefinalinput(win)
     end

@@ -1,14 +1,14 @@
 html_head(title = "Initialize Julia Project/Package") = 
 """
 <!DOCTYPE html>
-<html>
+<html lang="">
   <head>
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     $(css_styles())
     <title>$(title)</title>
   </head>
   <body>
-  <h2>Setting up a Julia Project or package</h2>
+  <h2>Setting up a Julia Project or Package</h2>
   <p class="comment">This is mostly a GUI for the Julia package <a href="https://juliaci.github.io/PkgTemplates.jl/stable/" target="_blank">PkgTemplates</a><br>
   here place for some explanations about environments</p>
 
@@ -69,7 +69,8 @@ function html_general_options()
     </div>
     
     <div class="pgin_inp_margins gen_opt_col$(onetwo())">
-        <input size="70" id="project_dir" name="project_dir" value="" onchange="oncng(this)" type="text"><br>
+        <input size="65" id="project_dir" name="project_dir" value="" onchange="oncng(this)" type="text">
+        <button id="project_dir_button" onclick="oncng(this)" type="button" class="FolderDialogButton">Select</button><br>
         <span class="plugin_arg_meaning" id="argmeaning_project_dir">Directory to place project in. Required input.</span><br>
     </div>
 
@@ -80,7 +81,7 @@ function html_general_options()
     
     <div class="pgin_inp_margins gen_opt_col$(onetwo())">
         <input size="70" id="julia_min_version" name="julia_min_version" value="v&quot;1.6&quot;" onchange="oncng(this)" type="text"><br>
-        <span class="plugin_arg_meaning" id="argmeaning_project_dir">Minimum allowed Julia version for this package.</span><br>
+        <span class="plugin_arg_meaning" id="argmeaning_julia_min_version">Minimum allowed Julia version for this package.</span><br>
     </div>
 
 </form>   
@@ -92,7 +93,7 @@ end
 
 function default_env_checkbox(no, pkg_name; 
     installed = default_env_packages())
-    checked = pkg_name in installed ? "checked=\"checked\"" : ""
+    checked = pkg_name in installed ? "checked" : ""
 
 cb = """
     <input id="defpkg$no" value="$pkg_name" $checked onchange="oncng(this)"

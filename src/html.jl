@@ -1,15 +1,10 @@
-include("css.jl")
-include("js_scripts.jl")
-include("html_sections.jl")
-include("html_plugins.jl")
+checked(b) = b ? "checked" : ""
 
-checked(show) = show ? "checked" : ""
-
-esc_qm(s::String) = replace(s, "\""=>"&quot;")
+esc_qm(s::String) = replace(s, "\""=>"&quot;", ">" => "&gt;", "<" => "&lt;", "&" => "&amp;")
 esc_qm(x) = x
 
-make_html(pgins) = html_head() * 
-    css_styles() * 
+make_html(pgins) = replace(
+    html_head() * 
     html_use_purpose() *
     html_general_options() *
     htmp_default_env_pkg() *
@@ -17,8 +12,9 @@ make_html(pgins) = html_head() *
     html_plugins(pgins) *
     html_submit() *
     js_scripts() *
-    html_tail()
-
+    html_tail(), 
+    r" +\n" => "\n")
+    
 function make_html(pgins, file) # plugins - see file "Plugins-and-default-arguments.jl"
     file = abspath(joinpath("html", file))
     html = make_html(pgins)
